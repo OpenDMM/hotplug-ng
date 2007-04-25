@@ -1,0 +1,87 @@
+.TH HOTPLUG 8 "February 2005" "" "Linux Programmer's Manual"
+.SH NAME
+hotplug \- Linux hotplugging support tools
+.SH SYNOPSIS
+.B hotplug
+.I NAME
+.SH DESCRIPTION
+.B hotplug
+is a program which is used by the Linux kernel to notify user mode
+software when some significant (usually hardware-related) events take
+place. An example is when a USB or Cardbus device has just been
+plugged in. This is useful for automatically loading and setting up
+drivers, packaged either as kernel modules or as user mode programs.
+.P
+The hotplug program path name is registered in
+.IR /proc/sys/kernel/hotplug
+and is normally set to
+.IR /sbin/hotplug .
+.P
+This version of hotplug, also refered to as
+.B hotplug-ng
+is a complete rewrite of the old shell-scripts
+written in C code. It currently provides the following features:
+.P
+\- a /sbin/hotplug multiplexer.  Works identical to the existing
+  bash /sbin/hotplug.
+.P
+\- autoload programs for usb, scsi, ieee1394, and pci modules.
+  These programs determine what module needs to be loaded when
+  the kernel emits a hotplug event for these types of devices.
+  This works just like the existing linux-hotplug scripts, with a
+  few exceptions.
+.SH ENVIRONMENT
+When the kernel finds a new device and registers it with sysfs, a
+hotplug event is generated that describes the new device in a bus
+specific manner through a number of different environment variables.
+The following variables are set by the kernel and read by the
+.B hotplug
+program:
+.TP
+.B ACTION
+.IR add " or " remove
+signifies the addition or the removal of a device.
+.P
+Other variables are set depending on the type of the device which was
+hotplugged:
+.TP
+.B PRODUCT, TYPE, INTERFACE
+Set for USB devices.
+.TP
+.B DEVPATH
+Set for SCSI devices.
+.TP
+.B PCI_ID, PCI_SUBSYS_ID, PCI_CLASS
+Set for PCI devices.
+.TP
+.B VENDOR_ID, MODEL_ID, SPECIFIER_ID, VERSION
+Set for IEEE1394 devices.
+.P
+The
+.B hotplug
+helpers split those environment variables apart into individual
+numbers, and then search the /lib/modules/KERNEL_VERSION/module.*map
+files for the proper matching module for this device. These mapfiles
+are created by the
+.B depmod
+program.
+.IR
+.SH FILES
+.nf
+/proc/sys/kernel/hotplug         specifies the hotplug program path
+/sbin/hotplug                    hotplug program (default path name)
+/etc/hotplug/*                   hotplug files
+.fi
+.SH SEE ALSO
+.BR udev (8),
+.BR depmod (8)
+.PP
+.B Web resources:
+.nf
+.IR http://linux\-hotplug.sourceforge.net/
+.IR http://www.kernel.org/pub/linux/utils/kernel/hotplug/udev.html
+.IR http://lwn.net/Articles/123932/
+.fi
+.SH AUTHORS
+.B hotplug-ng
+was developed by Greg Kroah-Hartman <greg@kroah.com>
