@@ -317,7 +317,7 @@ uninstall: uninstall-man
 	- rm $(hotplugdir)/usb/$(MODULE_USB).hotplug
 	- rm $(hotplugdir)/pci/$(MODULE_PCI).hotplug
 	- rm $(hotplugdir)/scsi/$(MODULE_SCSI).hotplug
-	- rm $(hotplugdir)/scsi/$(MODULE_FIRMWARE).hotplug
+	- rm $(hotplugdir)/firmware/$(MODULE_FIRMWARE).hotplug
 	- rmdir $(hotplugdir)/ieee1394
 	- rmdir $(hotplugdir)/usb
 	- rmdir $(hotplugdir)/pci
