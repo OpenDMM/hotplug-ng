@@ -30,6 +30,7 @@ USE_SELINUX = false
 
 VERSION =	002a
 ROOT =		hotplug
+BDPOLL =	bdpoll
 MODULE_IEEE1394 = 	module_ieee1394
 MODULE_USB = 	module_usb
 MODULE_PCI = 	module_pci
@@ -161,7 +162,7 @@ endif
 CFLAGS += 	-I$(PWD)/libsysfs/sysfs \
 		-I$(PWD)/libsysfs
 
-all: $(ROOT) $(MODULE_ALL) $(GEN_CONFIGS)
+all: $(ROOT) $(BDPOLL) $(MODULE_ALL) $(GEN_CONFIGS)
 
 $(ARCH_LIB_OBJS) : $(CRT0)
 
@@ -230,6 +231,7 @@ $(HOTPLUG_OBJS):	$(GEN_HEADERS) $(HOST_PROGS)
 $(SYSFS_OBJS):		$(HOST_PROGS)
 $(OBJS):		$(GEN_HEADERS) $(HOST_PROGS)
 $(ROOT).o:		$(GEN_HEADERS) $(HOST_PROGS)
+$(BDPOLL).o:		$(GEN_HEADERS) $(HOST_PROGS)
 $(MODULE_IEEE1394).o:	$(GEN_HEADERS) $(HOST_PROGS)
 $(MODULE_USB).o:	$(GEN_HEADERS) $(HOST_PROGS)
 $(MODULE_PCI).o:	$(GEN_HEADERS) $(HOST_PROGS)
@@ -239,6 +241,10 @@ $(MODULE_BLOCK).o:	$(GEN_HEADERS) $(HOST_PROGS)
 
 $(ROOT): $(LIBC) $(ROOT).o $(OBJS) $(HEADERS) 
 	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(ROOT).o $(LIB_OBJS) $(ARCH_LIB_OBJS)
+	$(QUIET) $(STRIPCMD) $@
+
+$(BDPOLL): $(LIBC) $(BDPOLL).o $(OBJS) $(HEADERS) 
+	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(BDPOLL).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
 	$(QUIET) $(STRIPCMD) $@
 
 $(MODULE_IEEE1394): $(LIBC) $(MODULE_IEEE1394).o $(OBJS) $(HEADERS) 
@@ -274,7 +280,7 @@ $(MODULE_BLOCK): $(LIBC) $(MODULE_BLOCK).o $(OBJS) $(HEADERS)
 clean:
 	-find . \( -not -type d \) -and \( -name '*~' -o -name '*.[oas]' \) -type f -print \
 	 | xargs rm -f 
-	-rm -f core $(ROOT) $(MODULE_ALL) $(GEN_HEADERS) $(GEN_CONFIGS)
+	-rm -f core $(ROOT) $(BDPOLL) $(MODULE_ALL) $(GEN_HEADERS) $(GEN_CONFIGS)
 	-rm -f ccdv
 	$(MAKE) -C klibc SUBDIRS=klibc clean
 
@@ -300,6 +306,7 @@ install: all install-man
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/scsi
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/firmware
 	$(INSTALL_PROGRAM) -D $(ROOT) $(DESTDIR)$(sbindir)/$(ROOT)
+	$(INSTALL_PROGRAM) -D $(BDPOLL) $(DESTDIR)$(sbindir)/$(BDPOLL)
 	$(INSTALL_PROGRAM) -D $(MODULE_IEEE1394) $(DESTDIR)$(sbindir)/$(MODULE_IEEE1394)
 	$(INSTALL_PROGRAM) -D $(MODULE_USB) $(DESTDIR)$(sbindir)/$(MODULE_USB)
 	$(INSTALL_PROGRAM) -D $(MODULE_PCI) $(DESTDIR)$(sbindir)/$(MODULE_PCI)
@@ -315,6 +322,7 @@ install: all install-man
 
 uninstall: uninstall-man
 	- rm $(sbindir)/$(ROOT)
+	- rm $(sbindir)/$(BDPOLL)
 	- rm $(sbindir)/$(MODULE_IEEE1394)
 	- rm $(sbindir)/$(MODULE_USB)
 	- rm $(sbindir)/$(MODULE_PCI)
