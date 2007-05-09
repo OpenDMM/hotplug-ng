@@ -75,6 +75,7 @@ static int hotplug_add(void)
 		goto exit;
 	}
 
+	retval = 0;
 exit:
 	return retval;
 }

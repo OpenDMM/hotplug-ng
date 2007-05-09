@@ -72,7 +72,9 @@ static int hotplug_add(void)
 	}
 
 	if (module)
-		load_module(module);
+		retval = load_module(module);
+	else
+		retval = 0;
 	
 exit_close:
 	close(fd);
