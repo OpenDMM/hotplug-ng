@@ -81,6 +81,14 @@ exit:
 
 static inline int hotplug_remove(void)
 {
+	const char *devpath;
+
+	devpath = getenv("DEVPATH");
+	if (!devpath)
+		dbg("missing DEVPATH environment variable, aborting.");
+	else
+		unlink(devpath_to_pathname(devpath));
+
 	return 0;
 }
 
