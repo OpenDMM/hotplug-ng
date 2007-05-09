@@ -69,7 +69,7 @@ int main(int argc, char *argv[], char *envp[])		\
 	}								\
 									\
 	if (strcmp(ADD_STRING, action) == 0) {				\
-		retval = add();						\
+		retval = hotplug_add();					\
 	} else if (strcmp(REMOVE_STRING, action) == 0) {		\
 		/* TODO */						\
 		retval = 0;						\

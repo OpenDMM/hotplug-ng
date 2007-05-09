@@ -37,7 +37,7 @@ static const char *devpath_to_pathname(const char *devpath)
 	return pathname;
 }
 
-static int add(void)
+static int hotplug_add(void)
 {
 	const char *devpath, *minor, *major, *pathname;
 	int retval = 1;

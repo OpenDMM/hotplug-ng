@@ -23,7 +23,7 @@
 
 static char usb_string[256];
 
-static int add(void)
+static int hotplug_add(void)
 {
 	char *product_env;
 	char *type_env;

@@ -59,7 +59,7 @@ static int fw_write(int fd, const char *buf, size_t count)
 	return count;
 }
 
-static int add(void)
+static int hotplug_add(void)
 {
 	char *devpath_env;
 	char *firmware_env;

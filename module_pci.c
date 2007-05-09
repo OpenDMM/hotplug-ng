@@ -24,7 +24,7 @@
 
 static char pci_string[256];
 
-static int add(void)
+static int hotplug_add(void)
 {
 	char *class_env;
 	char *id_env;

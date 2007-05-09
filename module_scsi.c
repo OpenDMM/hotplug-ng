@@ -27,7 +27,7 @@ static char scsi_file[256];
 static char scsi_type[50];
 static int type;
 
-static int add(void)
+static int hotplug_add(void)
 {
 	char *devpath;
 	char *module = NULL;

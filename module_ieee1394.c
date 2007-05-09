@@ -23,7 +23,7 @@
 
 static char ieee1394_string[256];
 
-static int add(void)
+static int hotplug_add(void)
 {
 	char *vendor_env;
 	char *model_env;
