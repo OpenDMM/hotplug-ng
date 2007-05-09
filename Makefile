@@ -28,7 +28,7 @@ DEBUG = false
 # Set this to compile with Security-Enhanced Linux support.
 USE_SELINUX = false
 
-VERSION =	002
+VERSION =	002a
 ROOT =		hotplug
 MODULE_IEEE1394 = 	module_ieee1394
 MODULE_USB = 	module_usb
