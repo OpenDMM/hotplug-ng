@@ -71,8 +71,7 @@ int main(int argc, char *argv[], char *envp[])		\
 	if (strcmp(ADD_STRING, action) == 0) {				\
 		retval = hotplug_add();					\
 	} else if (strcmp(REMOVE_STRING, action) == 0) {		\
-		/* TODO */						\
-		retval = 0;						\
+		retval = hotplug_remove();				\
 	} else {							\
 		dbg("we do not handle %s", action);			\
 		retval = 0;						\

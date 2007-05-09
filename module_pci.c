@@ -72,4 +72,9 @@ static int hotplug_add(void)
 	return error;
 }
 
+static inline int hotplug_remove(void)
+{
+	return 0;
+}
+
 main(pci);

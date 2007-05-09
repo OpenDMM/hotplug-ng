@@ -121,5 +121,10 @@ cleanup:
 	return ret;
 }
 
+static inline int hotplug_remove(void)
+{
+	return 0;
+}
+
 main(firmware);
 

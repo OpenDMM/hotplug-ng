@@ -80,5 +80,10 @@ exit:
 	return retval;
 }
 
+static inline int hotplug_remove(void)
+{
+	return 0;
+}
+
 main(scsi);
 
