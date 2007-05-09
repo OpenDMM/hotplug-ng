@@ -68,13 +68,15 @@ int main(int argc, char *argv[], char *envp[])		\
 		goto exit;						\
 	}								\
 									\
-	if (strcmp(ADD_STRING, action) != 0) {				\
-		dbg("we only handle %s", ADD_STRING);			\
+	if (strcmp(ADD_STRING, action) == 0) {				\
+		retval = add();						\
+	} else if (strcmp(REMOVE_STRING, action) == 0) {		\
+		/* TODO */						\
 		retval = 0;						\
-		goto exit;						\
+	} else {							\
+		dbg("we do not handle %s", action);			\
+		retval = 0;						\
 	}								\
-									\
-	retval = add();							\
 									\
 exit:									\
 	logging_close();						\
