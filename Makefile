@@ -34,10 +34,11 @@ MODULE_IEEE1394 = 	module_ieee1394
 MODULE_USB = 	module_usb
 MODULE_PCI = 	module_pci
 MODULE_SCSI = 	module_scsi
+MODULE_FIRMWARE =	module_firmware
 
 RELEASE_NAME =	$(ROOT)-ng-$(VERSION)
 
-MODULE_ALL =	$(MODULE_IEEE1394) $(MODULE_USB) $(MODULE_PCI) $(MODULE_SCSI)
+MODULE_ALL =	$(MODULE_IEEE1394) $(MODULE_USB) $(MODULE_PCI) $(MODULE_SCSI) $(MODULE_FIRMWARE)
 
 DESTDIR =
 
@@ -232,6 +233,7 @@ $(MODULE_IEEE1394).o:	$(GEN_HEADERS) $(HOST_PROGS)
 $(MODULE_USB).o:	$(GEN_HEADERS) $(HOST_PROGS)
 $(MODULE_PCI).o:	$(GEN_HEADERS) $(HOST_PROGS)
 $(MODULE_SCSI).o:	$(GEN_HEADERS) $(HOST_PROGS)
+$(MODULE_FIRMWARE).o:	$(GEN_HEADERS) $(HOST_PROGS)
 
 $(ROOT): $(LIBC) $(ROOT).o $(OBJS) $(HEADERS) 
 	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(ROOT).o $(LIB_OBJS) $(ARCH_LIB_OBJS)
@@ -251,6 +253,10 @@ $(MODULE_PCI): $(LIBC) $(MODULE_PCI).o $(OBJS) $(HEADERS)
 
 $(MODULE_SCSI): $(LIBC) $(MODULE_SCSI).o $(OBJS) $(HEADERS) 
 	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(MODULE_SCSI).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
+	$(QUIET) $(STRIPCMD) $@
+
+$(MODULE_FIRMWARE): $(LIBC) $(MODULE_FIRMWARE).o $(OBJS) $(HEADERS) 
+	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(MODULE_FIRMWARE).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
 	$(QUIET) $(STRIPCMD) $@
 
 
@@ -287,15 +293,18 @@ install: all install-man
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/usb
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/pci
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/scsi
+	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/firmware
 	$(INSTALL_PROGRAM) -D $(ROOT) $(DESTDIR)$(sbindir)/$(ROOT)
 	$(INSTALL_PROGRAM) -D $(MODULE_IEEE1394) $(DESTDIR)$(sbindir)/$(MODULE_IEEE1394)
 	$(INSTALL_PROGRAM) -D $(MODULE_USB) $(DESTDIR)$(sbindir)/$(MODULE_USB)
 	$(INSTALL_PROGRAM) -D $(MODULE_PCI) $(DESTDIR)$(sbindir)/$(MODULE_PCI)
 	$(INSTALL_PROGRAM) -D $(MODULE_SCSI) $(DESTDIR)$(sbindir)/$(MODULE_SCSI)
+	$(INSTALL_PROGRAM) -D $(MODULE_FIRMWARE) $(DESTDIR)$(sbindir)/$(MODULE_FIRMWARE)
 	- ln -f -s $(sbindir)/$(MODULE_IEEE1394) $(DESTDIR)$(hotplugdir)/ieee1394/$(MODULE_IEEE1394).hotplug
 	- ln -f -s $(sbindir)/$(MODULE_USB) $(DESTDIR)$(hotplugdir)/usb/$(MODULE_USB).hotplug
 	- ln -f -s $(sbindir)/$(MODULE_PCI) $(DESTDIR)$(hotplugdir)/pci/$(MODULE_PCI).hotplug
 	- ln -f -s $(sbindir)/$(MODULE_SCSI) $(DESTDIR)$(hotplugdir)/scsi/$(MODULE_SCSI).hotplug
+	- ln -f -s $(sbindir)/$(MODULE_FIRMWARE) $(DESTDIR)$(hotplugdir)/firmware/$(MODULE_FIRMWARE).hotplug
 
 uninstall: uninstall-man
 	- rm $(sbindir)/$(ROOT)
@@ -303,14 +312,17 @@ uninstall: uninstall-man
 	- rm $(sbindir)/$(MODULE_USB)
 	- rm $(sbindir)/$(MODULE_PCI)
 	- rm $(sbindir)/$(MODULE_SCSI)
+	- rm $(sbindir)/$(MODULE_FIRMWARE)
 	- rm $(hotplugdir)/ieee1394/$(MODULE_IEEE1394).hotplug
 	- rm $(hotplugdir)/usb/$(MODULE_USB).hotplug
 	- rm $(hotplugdir)/pci/$(MODULE_PCI).hotplug
 	- rm $(hotplugdir)/scsi/$(MODULE_SCSI).hotplug
+	- rm $(hotplugdir)/scsi/$(MODULE_FIRMWARE).hotplug
 	- rmdir $(hotplugdir)/ieee1394
 	- rmdir $(hotplugdir)/usb
 	- rmdir $(hotplugdir)/pci
 	- rmdir $(hotplugdir)/scsi
+	- rmdir $(hotplugdir)/firmware
 	- rmdir $(hotplugdir)
 
 test: all
