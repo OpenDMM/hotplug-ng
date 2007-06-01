@@ -66,10 +66,14 @@ int main(int argc, char *argv[])
 
 		switch (event) {
 		case EV_INSERTED:
+#ifdef DEBUG
 			printf("%s: media inserted\n", argv[1]);
+#endif
 			break;
 		case EV_REMOVED:
+#ifdef DEBUG
 			printf("%s: media removed\n", argv[1]);
+#endif
 			fd = open(argv[1], O_RDONLY | O_NONBLOCK);
 			if (fd < 0) {
 				perror(argv[1]);
@@ -79,7 +83,7 @@ int main(int argc, char *argv[])
 			close(fd);
 			break;
 		case EV_NONE:
-			usleep(500 * 1000);
+			sleep(1);
 			break;
 		}
 	}
