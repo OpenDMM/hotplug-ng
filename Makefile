@@ -306,6 +306,7 @@ install: all install-man
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/scsi
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/firmware
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/block
+	$(INSTALL) -d $(DESTDIR)/var/run/bdpoll
 	$(INSTALL_PROGRAM) -D $(ROOT) $(DESTDIR)$(sbindir)/$(ROOT)
 	$(INSTALL_PROGRAM) -D $(BDPOLL) $(DESTDIR)$(sbindir)/$(BDPOLL)
 	$(INSTALL_PROGRAM) -D $(MODULE_IEEE1394) $(DESTDIR)$(sbindir)/$(MODULE_IEEE1394)
@@ -346,3 +347,9 @@ uninstall: uninstall-man
 
 test: all
 	@ cd test && ./udev-test.pl
+
+bin-tarball:
+	$(RM) -r hotplug-ng-$(VERSION)
+	$(MAKE) install DESTDIR=hotplug-ng-$(VERSION)
+	tar -czf hotplug-ng-$(VERSION).tar.gz hotplug-ng-$(VERSION)
+
