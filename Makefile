@@ -305,6 +305,7 @@ install: all install-man
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/pci
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/scsi
 	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/firmware
+	$(INSTALL) -d $(DESTDIR)$(hotplugdir)/block
 	$(INSTALL_PROGRAM) -D $(ROOT) $(DESTDIR)$(sbindir)/$(ROOT)
 	$(INSTALL_PROGRAM) -D $(BDPOLL) $(DESTDIR)$(sbindir)/$(BDPOLL)
 	$(INSTALL_PROGRAM) -D $(MODULE_IEEE1394) $(DESTDIR)$(sbindir)/$(MODULE_IEEE1394)
