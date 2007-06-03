@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include "module_form.c"
 
 static int fw_open(const char *fmt, const char *str, int flags)
