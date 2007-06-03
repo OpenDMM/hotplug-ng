@@ -22,7 +22,9 @@
  */
 #include <ctype.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -52,18 +54,16 @@ static int timeout_exceeded(struct timeout *t)
 	return !((long)timeout_ms() - (long)t->val < 0);
 }
 
-static const char *devpath_to_pathname(const char *devpath)
+static bool devpath_to_pathname(char *devpath, char *pathname, size_t size)
 {
-	static char pathname[FILENAME_MAX];
 	const char *str;
 
 	str = basename(devpath);
 	if (!str)
-		return NULL;
+		return false;
 
-	snprintf(pathname, sizeof(pathname), "/dev/%s", str);
-
-	return pathname;
+	snprintf(pathname, size, "/dev/%s", str);
+	return true;
 }
 
 static int pidfile_read(const char filename[], pid_t *pid)
@@ -99,16 +99,16 @@ static int pidfile_write(const char filename[], pid_t pid)
 	return 0;
 }
 
-static const char *pidfile_name(const char dirname[], const char filename[])
+static const char *pidfile_name(const char dir[], const char filename[])
 {
 	static char pathname[FILENAME_MAX];
 
-	snprintf(pathname, FILENAME_MAX, "/var/run/%s/%s.pid", dirname, filename);
+	snprintf(pathname, FILENAME_MAX, "/var/run/%s/%s.pid", dir, filename);
 
 	return pathname;
 }
 
-static int bdpoll_exec(const char pathname[])
+static int bdpoll_exec(char pathname[])
 {
 	const char *filename;
 	pid_t pid;
@@ -120,7 +120,7 @@ static int bdpoll_exec(const char pathname[])
 		return -1;
 	} else if (pid == 0) {
 		argv[0] = "bdpoll";
-		argv[1] = (char *)pathname;
+		argv[1] = pathname;
 		argv[2] = NULL;
 		if (execvp(argv[0], argv) == -1)
 			perror(argv[0]);
@@ -131,7 +131,7 @@ static int bdpoll_exec(const char pathname[])
 	}
 }
 
-static int bdpoll_kill(const char pathname[])
+static int bdpoll_kill(char pathname[])
 {
 	const char *filename;
 	struct timeout t;
@@ -169,7 +169,9 @@ exit:
 
 static int hotplug_add(void)
 {
-	const char *devpath, *minor, *major, *pathname;
+	char *devpath;
+	const char *minor, *major;
+	char pathname[FILENAME_MAX];
 	int retval = 1;
 	dev_t dev;
 
@@ -195,8 +197,7 @@ static int hotplug_add(void)
 		goto exit;
 	}
 
-	pathname = devpath_to_pathname(devpath);
-	if (!pathname) {
+	if (!devpath_to_pathname(devpath, pathname, sizeof(pathname))) {
 		dbg("could not get pathname.");
 		goto exit;
 	}
@@ -223,7 +224,8 @@ exit:
 
 static int hotplug_remove(void)
 {
-	const char *devpath, *pathname;
+	char *devpath;
+	char pathname[FILENAME_MAX];
 	int retval = 1;
 
 	devpath = getenv("DEVPATH");
@@ -232,8 +234,7 @@ static int hotplug_remove(void)
 		goto exit;
 	}
 
-	pathname = devpath_to_pathname(devpath);
-	if (!pathname) {
+	if (!devpath_to_pathname(devpath, pathname, sizeof(pathname))) {
 		dbg("could not get pathname.");
 		goto exit;
 	}
