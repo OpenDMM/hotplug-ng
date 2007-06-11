@@ -25,15 +25,55 @@
 #include <libgen.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 #include "module_form.c"
 
 struct timeout {
 	unsigned long val;
 };
+
+static const char *vars[] = {
+	"ACTION", "DEVPATH", "PHYSDEVPATH", "PHYSDEVDRIVER",
+};
+
+static int send_variables(void)
+{
+	struct sockaddr_un addr;
+	const char *var;
+	unsigned int i;
+	int retval = 1;
+	int s;
+
+	addr.sun_family = AF_LOCAL;
+	strcpy(addr.sun_path, "/tmp/hotplug.socket");
+
+	if ((s = socket(PF_LOCAL, SOCK_STREAM, 0)) == -1) {
+		dbg("could not open socket.");
+		goto exit;
+	}
+
+	if (connect(s, (const struct sockaddr *)&addr, SUN_LEN(&addr)) == -1) {
+		dbg("could not connect socket.");
+		goto exit;
+	}
+
+	for (i = 0; i < sizeof(vars) / sizeof(vars[0]); i++)
+		if ((var = getenv(vars[i])))
+			write(s, var, strlen(var) + 1);
+
+	retval = 0;
+
+exit:
+	if (s != -1)
+		close(s);
+
+	return retval;
+}
 
 static unsigned long timeout_ms(void)
 {
@@ -63,6 +103,18 @@ static bool devpath_to_pathname(char *devpath, char *pathname, size_t size)
 		return false;
 
 	snprintf(pathname, size, "/dev/%s", str);
+	return true;
+}
+
+static bool devpath_to_mountpoint(char *devpath, char *mountpoint, size_t size)
+{
+	const char *str;
+
+	str = basename(devpath);
+	if (!str)
+		return false;
+
+	snprintf(mountpoint, size, "/autofs/%s", str);
 	return true;
 }
 
@@ -172,6 +224,7 @@ static int hotplug_add(void)
 	char *devpath;
 	const char *minor, *major;
 	char pathname[FILENAME_MAX];
+	char mountpoint[FILENAME_MAX];
 	int retval = 1;
 	dev_t dev;
 
@@ -217,6 +270,16 @@ static int hotplug_add(void)
 		}
 	}
 
+	if (!devpath_to_mountpoint(devpath, mountpoint, sizeof(mountpoint))) {
+		dbg("could not get mount point.");
+		goto exit;
+	}
+
+	if (chdir(mountpoint) == 0) {
+		chdir("/");
+		send_variables();
+	}
+
 	retval = 0;
 exit:
 	return retval;
@@ -248,10 +311,13 @@ static int hotplug_remove(void)
 		}
 	}
 
+	send_variables();
+
 	retval = 0;
 exit:
 	return retval;
 }
 
 main(block);
+
 
