@@ -1,6 +1,7 @@
 # Makefile for hotplug-ng
 #
 # Copyright (C) 2003-2005 Greg Kroah-Hartman <greg@kroah.com>
+# Copyright (C) 2007 Andreas Oberritter
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,10 +26,7 @@ USE_LOG = true
 # Leave this set to `false' for production use.
 DEBUG = false
 
-# Set this to compile with Security-Enhanced Linux support.
-USE_SELINUX = false
-
-VERSION =	002a
+VERSION =	002b
 ROOT =		hotplug
 BDPOLL =	bdpoll
 MODULE_IEEE1394 = 	module_ieee1394
@@ -44,33 +42,17 @@ MODULE_ALL =	$(MODULE_IEEE1394) $(MODULE_USB) $(MODULE_PCI) $(MODULE_SCSI) $(MOD
 
 DESTDIR =
 
-KERNEL_DIR = /lib/modules/${shell uname -r}/build
-
 # override this to make hotplug look in a different location for it's files
 prefix =
 exec_prefix =	${prefix}
 etcdir =	${prefix}/etc
 sbindir =	${exec_prefix}/sbin
-usrbindir =	${exec_prefix}/usr/bin
 mandir =	${prefix}/usr/share/man
 hotplugdir =	${etcdir}/hotplug.d
-srcdir = .
 
 INSTALL = /usr/bin/install -c
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_DATA  = ${INSTALL} -m 644
-INSTALL_SCRIPT = ${INSTALL_PROGRAM}
-
-# Comment out this line to build with something other 
-# than the local version of klibc
-#USE_KLIBC = true
-
-# make the build silent (well, at least the hotplug part)  Set this
-# to something else to make it noisy again.
-V=false
-
-# set up PWD so that older versions of make will work with our build.
-PWD = $(shell pwd)
 
 # If you are running a cross compiler, you may want to set this
 # to something more interesting, like "arm-linux-".  If you want
@@ -81,32 +63,10 @@ LD = $(CROSS)gcc
 AR = $(CROSS)ar
 STRIP = $(CROSS)strip
 RANLIB = $(CROSS)ranlib
-HOSTCC = gcc
 
-export CROSS CC AR STRIP RANLIB CFLAGS LDFLAGS LIB_OBJS ARCH_LIB_OBJS CRT0
-
-# code taken from uClibc to determine the current arch
-ARCH := ${shell $(CC) -dumpmachine | sed -e s'/-.*//' -e 's/i.86/i386/' -e 's/sparc.*/sparc/' \
-	-e 's/arm.*/arm/g' -e 's/m68k.*/m68k/' -e 's/powerpc/ppc/g'}
-
-# code taken from uClibc to determine the gcc include dir
-GCCINCDIR := ${shell LC_ALL=C $(CC) -print-search-dirs | sed -ne "s/install: \(.*\)/\1include/gp"}
-
-# code taken from uClibc to determine the libgcc.a filename
-GCC_LIB := $(shell $(CC) -print-libgcc-file-name )
-
-# use '-Os' optimization if available, else use -O2
-OPTIMIZATION := ${shell if $(CC) -Os -S -o /dev/null -xc /dev/null >/dev/null 2>&1; \
-		then echo "-Os"; else echo "-O2" ; fi}
-
-# check if compiler option is supported
-cc-supports = ${shell if $(CC) ${1} -S -o /dev/null -xc /dev/null > /dev/null 2>&1; then echo "$(1)"; fi;}
-
-WARNINGS := -Wall -fno-builtin -Wchar-subscripts -Wpointer-arith -Wstrict-prototypes -Wsign-compare
-WARNINGS += $(call cc-supports,-Wno-pointer-sign)
-WARNINGS += $(call cc-supports,-Wdeclaration-after-statement)
-
-CFLAGS := -pipe
+CFLAGS := -pipe -Wall -Wextra
+CPPFLAGS := -D_GNU_SOURCE
+LDFLAGS := -Wl,-warn-common
 
 ifeq ($(strip $(USE_LOG)),true)
 	CFLAGS  += -DUSE_LOG
@@ -114,80 +74,22 @@ endif
 
 # if DEBUG is enabled, then we do not strip or optimize
 ifeq ($(strip $(DEBUG)),true)
-	CFLAGS  += -O1 -g -DDEBUG -D_GNU_SOURCE
-	LDFLAGS += -Wl,-warn-common
-	STRIPCMD = /bin/true -Since_we_are_debugging
+	CFLAGS  += -O0 -ggdb -DDEBUG
 else
-	CFLAGS  += $(OPTIMIZATION) -fomit-frame-pointer -D_GNU_SOURCE
-	LDFLAGS += -s -Wl,-warn-common
-	STRIPCMD = $(STRIP) -s --remove-section=.note --remove-section=.comment
+	CFLAGS  += -Os -fomit-frame-pointer
+	LDFLAGS += -s
 endif
-
-# If we are using our version of klibc, then we need to build, link it, and then
-# link udev against it statically.
-# Otherwise, use glibc and link dynamically.
-ifeq ($(strip $(USE_KLIBC)),true)
-	KLIBC_BASE	= $(PWD)/klibc
-	KLIBC_DIR	= $(KLIBC_BASE)/klibc
-	INCLUDE_DIR	:= $(KLIBC_BASE)/include
-	LINUX_INCLUDE_DIR	:= $(KERNEL_DIR)/include
-	include $(KLIBC_DIR)/arch/$(ARCH)/MCONFIG
-	ARCH_LIB_OBJS	= $(KLIBC_DIR)/libc.a
-	CRT0 = $(KLIBC_DIR)/crt0.o
-	LIBC = $(ARCH_LIB_OBJS) $(LIB_OBJS) $(CRT0)
-	CFLAGS += $(WARNINGS) -nostdinc				\
-		$(OPTFLAGS) $(REQFLAGS)				\
-		-D__KLIBC__ -fno-builtin-printf			\
-		-I$(INCLUDE_DIR)				\
-		-I$(INCLUDE_DIR)/arch/$(ARCH)			\
-		-I$(INCLUDE_DIR)/bits$(BITSIZE)			\
-		-I$(GCCINCDIR)					\
-		-I$(LINUX_INCLUDE_DIR)
-	LIB_OBJS =
-	LDFLAGS = --static --nostdlib -nostartfiles -nodefaultlibs
-else
-	WARNINGS += -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations
-	CRT0 =
-	LIBC =
-	CFLAGS += $(WARNINGS) -I$(GCCINCDIR)
-	LIB_OBJS = -lc
-	LDFLAGS =
-endif
-
-ifeq ($(strip $(USE_SELINUX)),true)
-	CFLAGS += -DUSE_SELINUX
-	LIB_OBJS += -lselinux
-endif
-
-CFLAGS += 	-I$(PWD)/libsysfs/sysfs \
-		-I$(PWD)/libsysfs
 
 all: $(ROOT) $(BDPOLL) $(MODULE_ALL) $(GEN_CONFIGS)
 
-$(ARCH_LIB_OBJS) : $(CRT0)
-
-$(CRT0):
-	@if [ ! -r klibc/linux ]; then \
-		ln -f -s $(KERNEL_DIR) klibc/linux; \
-	fi
-	$(MAKE) -C klibc SUBDIRS=klibc TESTS=
-
-SYSFS_OBJS = \
-	libsysfs/sysfs_class.o	\
-	libsysfs/sysfs_device.o	\
-	libsysfs/sysfs_dir.o	\
-	libsysfs/sysfs_driver.o	\
-	libsysfs/sysfs_utils.o	\
-	libsysfs/dlist.o
-
-SYSFS = $(PWD)/libsysfs/sysfs.a
-
 HOTPLUG_OBJS =	\
-	hotplug_util.o
+	hotplug_util.o \
+	udev_sysdeps.o \
+	udev_sysfs.o \
+	udev_utils_string.o
 
 OBJS = \
-	hotplug.a		\
-	libsysfs/sysfs.a
+	hotplug.a
 
 HEADERS = \
 	hotplug_version.h	\
@@ -195,102 +97,53 @@ HEADERS = \
 	logging.h		\
 	list.h
 
-ifeq ($(strip $(V)),false)
-	QUIET=@./ccdv
-	HOST_PROGS=ccdv
-else
-	QUIET=
-	HOST_PROGS=
-endif
-
 hotplug.a: $(HOTPLUG_OBJS)
 	rm -f $@
-	$(QUIET) $(AR) cq $@ $(HOTPLUG_OBJS)
-	$(QUIET) $(RANLIB) $@
-
-libsysfs/sysfs.a: $(SYSFS_OBJS)
-	rm -f $@
-	$(QUIET) $(AR) cq $@ $(SYSFS_OBJS)
-	$(QUIET) $(RANLIB) $@
+	$(AR) cq $@ $(HOTPLUG_OBJS)
+	$(RANLIB) $@
 
 # header files automatically generated
 GEN_HEADERS =	hotplug_version.h
 
-ccdv:
-	@echo "Building ccdv"
-	@$(HOSTCC) -O1 ccdv.c -o ccdv
-
 # Rules on how to create the generated header files
 hotplug_version.h:
-	@echo "Creating $@"
 	@echo \#define HOTPLUG_VERSION		\"$(VERSION)\" > $@
 	@echo \#define HOTPLUG_DIR		\"$(hotplugdir)\" >> $@
 
 
-$(HOTPLUG_OBJS):	$(GEN_HEADERS) $(HOST_PROGS)
-$(SYSFS_OBJS):		$(HOST_PROGS)
-$(OBJS):		$(GEN_HEADERS) $(HOST_PROGS)
-$(ROOT).o:		$(GEN_HEADERS) $(HOST_PROGS)
-$(BDPOLL).o:		$(GEN_HEADERS) $(HOST_PROGS)
-$(MODULE_IEEE1394).o:	$(GEN_HEADERS) $(HOST_PROGS)
-$(MODULE_USB).o:	$(GEN_HEADERS) $(HOST_PROGS)
-$(MODULE_PCI).o:	$(GEN_HEADERS) $(HOST_PROGS)
-$(MODULE_SCSI).o:	$(GEN_HEADERS) $(HOST_PROGS)
-$(MODULE_FIRMWARE).o:	$(GEN_HEADERS) $(HOST_PROGS)
-$(MODULE_BLOCK).o:	$(GEN_HEADERS) $(HOST_PROGS)
+$(HOTPLUG_OBJS):	$(GEN_HEADERS)
+$(OBJS):		$(GEN_HEADERS)
+$(ROOT).o:		$(GEN_HEADERS)
+$(BDPOLL).o:		$(GEN_HEADERS)
+$(MODULE_IEEE1394).o:	$(GEN_HEADERS)
+$(MODULE_USB).o:	$(GEN_HEADERS)
+$(MODULE_PCI).o:	$(GEN_HEADERS)
+$(MODULE_SCSI).o:	$(GEN_HEADERS)
+$(MODULE_FIRMWARE).o:	$(GEN_HEADERS)
+$(MODULE_BLOCK).o:	$(GEN_HEADERS)
 
-$(ROOT): $(LIBC) $(ROOT).o $(OBJS) $(HEADERS) 
-	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(ROOT).o $(LIB_OBJS) $(ARCH_LIB_OBJS)
-	$(QUIET) $(STRIPCMD) $@
+$(ROOT): $(OBJS) $(HEADERS)
 
-$(BDPOLL): $(LIBC) $(BDPOLL).o $(OBJS) $(HEADERS) 
-	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(BDPOLL).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
-	$(QUIET) $(STRIPCMD) $@
+$(BDPOLL): $(OBJS) $(HEADERS)
 
-$(MODULE_IEEE1394): $(LIBC) $(MODULE_IEEE1394).o $(OBJS) $(HEADERS) 
-	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(MODULE_IEEE1394).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
-	$(QUIET) $(STRIPCMD) $@
+$(MODULE_IEEE1394): $(OBJS) $(HEADERS)
 
-$(MODULE_USB): $(LIBC) $(MODULE_USB).o $(OBJS) $(HEADERS) 
-	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(MODULE_USB).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
-	$(QUIET) $(STRIPCMD) $@
+$(MODULE_USB): $(OBJS) $(HEADERS)
 
-$(MODULE_PCI): $(LIBC) $(MODULE_PCI).o $(OBJS) $(HEADERS) 
-	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(MODULE_PCI).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
-	$(QUIET) $(STRIPCMD) $@
+$(MODULE_PCI): $(OBJS) $(HEADERS)
 
-$(MODULE_SCSI): $(LIBC) $(MODULE_SCSI).o $(OBJS) $(HEADERS) 
-	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(MODULE_SCSI).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
-	$(QUIET) $(STRIPCMD) $@
+$(MODULE_SCSI): $(OBJS) $(HEADERS)
 
-$(MODULE_FIRMWARE): $(LIBC) $(MODULE_FIRMWARE).o $(OBJS) $(HEADERS) 
-	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(MODULE_FIRMWARE).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
-	$(QUIET) $(STRIPCMD) $@
+$(MODULE_FIRMWARE): $(OBJS) $(HEADERS)
 
-$(MODULE_BLOCK): $(LIBC) $(MODULE_BLOCK).o $(OBJS) $(HEADERS) 
-	$(QUIET) $(LD) $(LDFLAGS) -o $@ $(CRT0) $(MODULE_BLOCK).o $(OBJS) $(LIB_OBJS) $(ARCH_LIB_OBJS)
-	$(QUIET) $(STRIPCMD) $@
-
-#.c.o:
-#	$(CC) $(CFLAGS) $(DEFS) $(CPPFLAGS) -c -o $@ $<
-.c.o:
-	$(QUIET) $(CC) $(CFLAGS) -c -o $@ $<
-
+$(MODULE_BLOCK): $(OBJS) $(HEADERS)
 
 clean:
 	-find . \( -not -type d \) -and \( -name '*~' -o -name '*.[oas]' \) -type f -print \
-	 | xargs rm -f 
+	 | xargs rm -f
 	-rm -f core $(ROOT) $(BDPOLL) $(MODULE_ALL) $(GEN_HEADERS) $(GEN_CONFIGS)
-	-rm -f ccdv
-	$(MAKE) -C klibc SUBDIRS=klibc clean
 
 spotless: clean
-	$(MAKE) -C klibc SUBDIRS=klibc spotless
-	-rm -f klibc/linux
-
-release: spotless
-	git-tar-tree HEAD $(RELEASE_NAME) | gzip -9v > $(RELEASE_NAME).tar.gz
-	@echo "$(RELEASE_NAME).tar.gz created"
 
 install-man:
 	$(INSTALL_DATA) -D hotplug.8 $(DESTDIR)$(mandir)/man8/hotplug.8
