@@ -1,10 +1,8 @@
 /*
- * logging.h
+ * simple logging functions that can be expanded into nothing
  *
- * Simple logging functions that can be compiled away into nothing.
- *
- * Copyright (C) 2003,2004 Greg Kroah-Hartman <greg@kroah.com>
- * Copyright (C) 2004 Kay Sievers <kay.sievers@vrfy.org>
+ * Copyright (C) 2003-2004 Greg Kroah-Hartman <greg@kroah.com>
+ * Copyright (C) 2004-2006 Kay Sievers <kay.sievers@vrfy.org>
  *
  *	This program is free software; you can redistribute it and/or modify it
  *	under the terms of the GNU General Public License as published by the
@@ -17,13 +15,14 @@
  * 
  *	You should have received a copy of the GNU General Public License along
  *	with this program; if not, write to the Free Software Foundation, Inc.,
- *	675 Mass Ave, Cambridge, MA 02139, USA.
+ *	51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  */
 
 #ifndef LOGGING_H
 #define LOGGING_H
 
+#define err(format, arg...)		do { } while (0)
 #define info(format, arg...)		do { } while (0)
 #define dbg(format, arg...)		do { } while (0)
 #define logging_init(foo)		do { } while (0)
@@ -33,35 +32,34 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <syslog.h>
-#include <stdio.h>
 
-#define LOGNAME_SIZE			42
+#undef err
+#define err(format, arg...)							\
+	do {									\
+		log_message(LOG_ERR ,"%s: " format ,__FUNCTION__ ,## arg);	\
+	} while (0)
 
 #undef info
-#define info(format, arg...)								\
-	do {										\
-		log_message(LOG_INFO , format , ## arg);				\
+#define info(format, arg...)							\
+	do {									\
+		log_message(LOG_INFO ,"%s: " format ,__FUNCTION__ ,## arg);	\
 	} while (0)
 
 #ifdef DEBUG
 #undef dbg
-#define dbg(format, arg...)								\
-	do {										\
-		log_message(LOG_DEBUG , "%s: " format , __FUNCTION__ , ## arg);	\
+#define dbg(format, arg...)							\
+	do {									\
+		log_message(LOG_DEBUG ,"%s: " format ,__FUNCTION__ ,## arg);	\
 	} while (0)
 #endif
 
-extern void log_message(int level, const char *format, ...)
+extern void log_message(int priority, const char *format, ...)
 	__attribute__ ((format (printf, 2, 3)));
 
-/* each program that uses syslog must declare this variable somewhere */
-extern unsigned char logname[LOGNAME_SIZE];
-
 #undef logging_init
-static inline void logging_init(char *program_name)
+static inline void logging_init(const char *program_name)
 {
-	snprintf(logname, LOGNAME_SIZE,"%s[%d]", program_name, getpid());
-	openlog(logname, 0, LOG_DAEMON);
+	openlog(program_name, LOG_PID | LOG_CONS, LOG_DAEMON);
 }
 
 #undef logging_close

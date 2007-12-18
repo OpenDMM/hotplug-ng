@@ -30,7 +30,6 @@
 #include "hotplug_util.h"
 
 #ifdef USE_LOG
-unsigned char logname[LOGNAME_SIZE];
 void log_message(int level, const char *format, ...)
 {
 	va_list args;
@@ -42,7 +41,7 @@ void log_message(int level, const char *format, ...)
 #endif
 
 #define main(type)					\
-int main(int argc, char *argv[], char *envp[])		\
+int main(int argc, char *argv[])			\
 {							\
 	char *action;					\
 	char *subsystem;				\

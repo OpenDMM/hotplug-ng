@@ -49,7 +49,6 @@ do { \
 } while (0)
 
 #ifdef USE_LOG
-unsigned char logname[LOGNAME_SIZE];
 void log_message(int level, const char *format, ...)
 {
 	va_list args;
@@ -172,7 +171,7 @@ static int call_foreach_file(const char *dirname)
  * 	argv[1]/
  * 	default/
  */
-int main(int argc, char *argv[], char *envp[])
+int main(int argc, char *argv[])
 {
 	char dirname[PATH_MAX];
 #ifndef DEBUG
@@ -185,6 +184,9 @@ int main(int argc, char *argv[], char *envp[])
 	}
 	close(fd);
 #endif
+	if (argc < 2)
+		return 1;
+
 	subsystem = argv[1];
 	logging_init("hotplug");
 
