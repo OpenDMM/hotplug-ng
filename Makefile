@@ -80,7 +80,7 @@ else
 	LDFLAGS += -s
 endif
 
-all: $(ROOT) $(BDPOLL) $(MODULE_ALL) $(GEN_CONFIGS)
+all: $(ROOT) $(BDPOLL) $(MODULE_ALL)
 
 HOTPLUG_OBJS =	\
 	hotplug_util.o \
@@ -141,7 +141,7 @@ $(MODULE_BLOCK): $(OBJS) $(HEADERS)
 clean:
 	-find . \( -not -type d \) -and \( -name '*~' -o -name '*.[oas]' \) -type f -print \
 	 | xargs rm -f
-	-rm -f core $(ROOT) $(BDPOLL) $(MODULE_ALL) $(GEN_HEADERS) $(GEN_CONFIGS)
+	-rm -f core $(ROOT) $(BDPOLL) $(MODULE_ALL) $(GEN_HEADERS)
 
 spotless: clean
 
