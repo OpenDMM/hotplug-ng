@@ -25,11 +25,13 @@
 #ifndef HOTPLUG_UTIL_H
 #define HOTPLUG_UTIL_H
 
+#include <stdbool.h>
+
 #define ADD_STRING	"add"
 #define REMOVE_STRING	"remove"
 
-extern int split_3values (const char *string, int base, unsigned int * value1, unsigned int * value2, unsigned int * value3);
-extern int split_2values (const char *string, int base, unsigned int * value1, unsigned int * value2);
-extern int load_module (const char *module_name);
+int split_3values(const char *string, int base, unsigned int *value1, unsigned int *value2, unsigned int *value3);
+int split_2values(const char *string, int base, unsigned int *value1, unsigned int *value2);
+int modprobe(const char *module_name, bool insert);
 
 #endif

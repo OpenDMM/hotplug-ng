@@ -20,15 +20,18 @@
  *
  */
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
-#include "module_form.c"
+#include "hotplug_util.h"
+#include "module_scsi.h"
+#include "udev.h"
 
-static char scsi_file[256];
-static char scsi_type[50];
-static int type;
-
-static int hotplug_add(void)
+int scsi_add(void)
 {
+	char scsi_file[256];
+	char scsi_type[50];
+	int type;
 	char *devpath;
 	char *module = NULL;
 	int i;
@@ -72,7 +75,7 @@ static int hotplug_add(void)
 	}
 
 	if (module)
-		retval = load_module(module);
+		retval = modprobe(module, true);
 	else
 		retval = 0;
 	
@@ -81,11 +84,4 @@ exit_close:
 exit:
 	return retval;
 }
-
-static inline int hotplug_remove(void)
-{
-	return 0;
-}
-
-main(scsi);
 

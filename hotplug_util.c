@@ -24,8 +24,8 @@
 #include <string.h>
 #include <stdlib.h>	/* for exit() */
 #include <unistd.h>
-#include "logging.h"
 #include "hotplug_util.h"
+#include "udev.h"
 
 /**
  * split_2values
@@ -174,15 +174,17 @@ int split_3values (const char *string, int base, unsigned int * value1, unsigned
 	return 0;
 }
 
-
-int load_module (const char *module_name)
+int modprobe(const char *module_name, bool insert)
 {
-	char *argv[3];
+	unsigned int i = 0;
+	char *argv[4];
 
-	argv[0] = "/sbin/modprobe";
-	argv[1] = (char *)module_name;
-	argv[2] = NULL;
-	dbg ("loading module %s", module_name);
+	argv[i++] = "/sbin/modprobe";
+	if (!insert)
+		argv[i++] = "-r";
+	argv[i++] = (char *)module_name;
+	argv[i++] = NULL;
+	dbg ("%sloading module %s", insert ? "" : "un", module_name);
 	switch (fork()) {
 		case 0:
 			/* we are the child, so lets run the program */

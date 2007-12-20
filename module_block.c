@@ -1,196 +1,86 @@
 /*
- * module_block.c
- *
- * Creates block device nodes using hotplug environment variables.
- *
- * Copyright (C) 2005 Greg Kroah-Hartman <greg@kroah.com>
- * Copyright (C) 2007 Andreas Oberritter
- *
- *	This program is free software; you can redistribute it and/or modify it
- *	under the terms of the GNU General Public License as published by the
- *	Free Software Foundation version 2 of the License.
- *
- *	This program is distributed in the hope that it will be useful, but
- *	WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *	General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public License along
- *	with this program; if not, write to the Free Software Foundation, Inc.,
- *	675 Mass Ave, Cambridge, MA 02139, USA.
- *
- */
-#include <ctype.h>
+    module_block.c
+
+    Creates block device nodes using hotplug environment variables.
+
+    Copyright (C) 2007 Andreas Oberritter
+    Copyright (C) 2005 Greg Kroah-Hartman <greg@kroah.com>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License 2.0 as published by
+    the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+#define _GNU_SOURCE	/* for getline() */
+#include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <sys/socket.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/un.h>
 #include <sys/wait.h>
-#include "module_form.c"
+#include "hotplug_basename.h"
+#include "hotplug_devpath.h"
+#include "hotplug_pidfile.h"
+#include "hotplug_setenv.h"
+#include "hotplug_socket.h"
+#include "hotplug_timeout.h"
+#include "module_block.h"
+#include "udev.h"
 
-struct timeout {
-	unsigned long val;
+static const char *block_vars[] = {
+	"ACTION",
+	"DEVPATH",
+	"PHYSDEVPATH",
+	"PHYSDEVDRIVER",
+	"X_E2_REMOVABLE",
+	"X_E2_CDROM",
+	NULL,
 };
 
-static const char *vars[] = {
-	"ACTION", "DEVPATH", "PHYSDEVPATH", "PHYSDEVDRIVER",
-};
-
-static int send_variables(void)
+static int bdpoll_exec(const char devpath[], bool is_cdrom, bool support_media_changed)
 {
-	struct sockaddr_un addr;
-	const char *var;
-	unsigned int i;
-	int retval = 1;
-	int s;
-
-	addr.sun_family = AF_LOCAL;
-	strcpy(addr.sun_path, "/tmp/hotplug.socket");
-
-	if ((s = socket(PF_LOCAL, SOCK_STREAM, 0)) == -1) {
-		dbg("could not open socket.");
-		goto exit;
-	}
-
-	if (connect(s, (const struct sockaddr *)&addr, SUN_LEN(&addr)) == -1) {
-		dbg("could not connect socket.");
-		goto exit;
-	}
-
-	for (i = 0; i < sizeof(vars) / sizeof(vars[0]); i++)
-		if ((var = getenv(vars[i])))
-			write(s, var, strlen(var) + 1);
-
-	retval = 0;
-
-exit:
-	if (s != -1)
-		close(s);
-
-	return retval;
-}
-
-static unsigned long timeout_ms(void)
-{
-	struct timeval tv;
-
-	gettimeofday(&tv, NULL);
-
-	return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
-}
-
-static void timeout_init(struct timeout *t, unsigned long ms)
-{
-	t->val = timeout_ms() + ms;
-}
-
-static int timeout_exceeded(struct timeout *t)
-{
-	return !((long)timeout_ms() - (long)t->val < 0);
-}
-
-static bool devpath_to_pathname(char *devpath, char *pathname, size_t size)
-{
-	const char *str;
-
-	str = basename(devpath);
-	if (!str)
-		return false;
-
-	snprintf(pathname, size, "/dev/%s", str);
-	return true;
-}
-
-static bool devpath_to_mountpoint(char *devpath, char *mountpoint, size_t size)
-{
-	const char *str;
-
-	str = basename(devpath);
-	if (!str)
-		return false;
-
-	snprintf(mountpoint, size, "/autofs/%s", str);
-	return true;
-}
-
-static int pidfile_read(const char filename[], pid_t *pid)
-{
-	FILE *f;
-	int ret;
-
-	f = fopen(filename, "r");
-	if (f == NULL) {
-		perror(filename);
-		return -1;
-	}
-
-	ret = fscanf(f, "%d\n", pid);
-	fclose(f);
-
-	return (ret == 1) ? 0 : -1;
-}
-
-static int pidfile_write(const char filename[], pid_t pid)
-{
-	FILE *f;
-
-	f = fopen(filename, "w");
-	if (f == NULL) {
-		perror(filename);
-		return -1;
-	}
-
-	fprintf(f, "%d\n", pid);
-	fclose(f);
-
-	return 0;
-}
-
-static const char *pidfile_name(const char dir[], const char filename[])
-{
-	static char pathname[FILENAME_MAX];
-
-	snprintf(pathname, FILENAME_MAX, "/var/run/%s/%s.pid", dir, filename);
-
-	return pathname;
-}
-
-static int bdpoll_exec(char pathname[])
-{
-	const char *filename;
 	pid_t pid;
-	char *argv[3];
+	char *argv[5];
+	unsigned int i = 0;
 
 	pid = fork();
 	if (pid == -1) {
 		perror("fork");
 		return -1;
 	} else if (pid == 0) {
-		argv[0] = "bdpoll";
-		argv[1] = pathname;
-		argv[2] = NULL;
+		argv[i++] = "bdpoll";
+		argv[i++] = (char *)devpath;
+		if (is_cdrom)
+			argv[i++] = "-c";
+		if (support_media_changed)
+			argv[i++] = "-m";
+		argv[i++] = NULL;
 		if (execvp(argv[0], argv) == -1)
 			perror(argv[0]);
 		return -1;
 	} else {
-		filename = pidfile_name("bdpoll", basename(pathname));
-		return pidfile_write(filename, pid);
+		return pidfile_write(pid, "bdpoll.%s", hotplug_basename(devpath));
 	}
 }
 
-static int bdpoll_kill(char pathname[])
+static int bdpoll_kill(const char devpath[])
 {
-	const char *filename;
 	struct timeout t;
 	pid_t pid, wpid;
 
-	filename = pidfile_name("bdpoll", basename(pathname));
-	if (pidfile_read(filename, &pid) == -1)
+	if (pidfile_read(&pid, "bdpoll.%s", hotplug_basename(devpath)) == -1)
 		return -1;
 
 	if (kill(pid, SIGTERM) == -1) {
@@ -215,18 +105,109 @@ static int bdpoll_kill(char pathname[])
 	}
 
 exit:
-	unlink(filename);
+	pidfile_unlink("bdpoll.%s", hotplug_basename(devpath));
 	return 0;
 }
 
-static int hotplug_add(void)
+static int do_mknod(const char *devnode, const char *major, const char *minor)
+{
+	dev_t dev = (atoi(major) << 8) | atoi(minor);
+
+	return mknod(devnode, S_IFBLK | S_IRUSR | S_IWUSR, dev);
+}
+
+static long sysfs_attr_get_long(const char *devpath, const char *attr_name)
+{
+	char *value;
+
+	value = sysfs_attr_get_value(devpath, attr_name);
+	if (value == NULL) {
+		errno = ERANGE;
+		return LONG_MAX;
+	}
+
+	errno = 0;
+	return strtol(value, NULL, 0);
+}
+
+#define GENHD_FL_REMOVABLE                      1
+static bool dev_is_removable(const char *devpath)
+{
+	long attr;
+
+	attr = sysfs_attr_get_long(devpath, "removable");
+	if ((attr != LONG_MAX) || (errno != ERANGE))
+		return (attr != 0);
+
+	attr = sysfs_attr_get_long(devpath, "capability");
+	if ((attr != LONG_MAX) || (errno != ERANGE))
+		return (attr & GENHD_FL_REMOVABLE);
+
+	return false;
+}
+
+#define GENHD_FL_MEDIA_CHANGE_NOTIFY            4
+static bool dev_can_notify_media_change(const char *devpath)
+{
+	long attr;
+
+	attr = sysfs_attr_get_long(devpath, "capability");
+	if ((attr != LONG_MAX) || (errno != ERANGE))
+		return (attr & GENHD_FL_MEDIA_CHANGE_NOTIFY);
+
+	return false;
+}
+
+#define GENHD_FL_CD                             8
+static bool dev_is_cdrom(const char *devpath)
+{
+	char pathname[FILENAME_MAX];
+	bool ret = false;
+	const char *str;
+	char *buf = NULL;
+	size_t n = 0;
+	long attr;
+	FILE *f;
+
+	attr = sysfs_attr_get_long(devpath, "capability");
+	if ((attr != LONG_MAX) || (errno != ERANGE))
+		return (attr & GENHD_FL_CD);
+
+	str = hotplug_basename(devpath);
+
+	if ((strlen(str) > 2) &&
+	    (str[0] == 'h') &&
+	    (str[1] == 'd')) {
+		snprintf(pathname, sizeof(pathname), "/proc/ide/%s/media", str);
+
+		f = fopen(pathname, "r");
+		if (f == NULL) {
+			dbg("can't open %s: %s", pathname, strerror(errno));
+		} else {
+		       	if (getline(&buf, &n, f) != -1) {
+				if (buf != NULL) {
+					if (n >= 5)
+						ret = !strncmp(buf, "cdrom", 5);
+					free(buf);
+				}
+			}
+			fclose(f);
+		}
+	}
+
+	return ret;
+}
+
+int block_add(void)
 {
 	char *devpath;
 	const char *minor, *major;
-	char pathname[FILENAME_MAX];
-	char mountpoint[FILENAME_MAX];
-	int retval = 1;
-	dev_t dev;
+	char devnode[FILENAME_MAX];
+	bool is_removable;
+        bool is_cdrom;
+ 	bool support_media_changed;
+
+	sysfs_init();
 
 	/*
 	 * DEVPATH=/block/sda
@@ -235,89 +216,73 @@ static int hotplug_add(void)
 	devpath = getenv("DEVPATH");
 	if (!devpath) {
 		dbg("missing DEVPATH environment variable, aborting.");
-		goto exit;
+		return EXIT_FAILURE;
 	}
 
 	minor = getenv("MINOR");
 	if (!minor) {
 		dbg("missing MINOR environment variable, aborting.");
-		goto exit;
+		return EXIT_FAILURE;
 	}
 
 	major = getenv("MAJOR");
 	if (!major) {
 		dbg("missing MAJOR environment variable, aborting.");
-		goto exit;
+		return EXIT_FAILURE;
 	}
 
-	if (!devpath_to_pathname(devpath, pathname, sizeof(pathname))) {
-		dbg("could not get pathname.");
-		goto exit;
+	if (!hotplug_devpath_to_devnode(devpath, devnode, sizeof(devnode))) {
+		dbg("could not get device node.");
+		return EXIT_FAILURE;
 	}
 
-	unlink(pathname);
+	unlink(devnode);
 
-	dev = (atoi(major) << 8) | atoi(minor);
-	if (mknod(pathname, S_IFBLK | S_IRUSR | S_IWUSR, dev) == -1) {
+	if (do_mknod(devnode, major, minor) == -1) {
 		dbg("mknod: %s", strerror(errno));
-		goto exit;
+		return EXIT_FAILURE;
 	}
 
-	if (!isdigit(pathname[strlen(pathname) - 1])) {
-		if (bdpoll_exec(pathname) == -1) {
+	is_removable = dev_is_removable(devpath);
+	is_cdrom = is_removable && dev_is_cdrom(devpath);
+	support_media_changed = is_cdrom && dev_can_notify_media_change(devpath);
+
+	if (is_removable) {
+		if (bdpoll_exec(devpath, is_cdrom, support_media_changed) == -1)
 			dbg("could not exec bdpoll");
-			goto exit;
-		}
 	}
 
-	if (!devpath_to_mountpoint(devpath, mountpoint, sizeof(mountpoint))) {
-		dbg("could not get mount point.");
-		goto exit;
-	}
+	hotplug_setenv_bool("X_E2_REMOVABLE", is_removable);
+	hotplug_setenv_bool("X_E2_CDROM", is_cdrom);
 
-	if (chdir(mountpoint) == 0) {
-		chdir("/");
-		send_variables();
-	}
+	hotplug_socket_send_env(block_vars);
 
-	retval = 0;
-exit:
-	return retval;
+	return EXIT_SUCCESS;
 }
 
-static int hotplug_remove(void)
+int block_remove(void)
 {
 	char *devpath;
-	char pathname[FILENAME_MAX];
-	int retval = 1;
+	char devnode[FILENAME_MAX];
 
 	devpath = getenv("DEVPATH");
 	if (!devpath) {
 		dbg("missing DEVPATH environment variable, aborting.");
-		goto exit;
+		return EXIT_FAILURE;
 	}
 
-	if (!devpath_to_pathname(devpath, pathname, sizeof(pathname))) {
-		dbg("could not get pathname.");
-		goto exit;
+	if (!hotplug_devpath_to_devnode(devpath, devnode, sizeof(devnode))) {
+		dbg("could not get device node.");
+		return EXIT_FAILURE;
 	}
 
-	unlink(pathname);
+	unlink(devnode);
 
-	if (!isdigit(pathname[strlen(pathname) - 1])) {
-		if (bdpoll_kill(pathname) == -1) {
-			dbg("could not kill bdpoll");
-			goto exit;
-		}
-	}
+	if (bdpoll_kill(devpath) == -1)
+		dbg("could not kill bdpoll");
 
-	send_variables();
+	hotplug_socket_send_env(block_vars);
 
-	retval = 0;
-exit:
-	return retval;
+	return EXIT_SUCCESS;
 }
-
-main(block);
-
 

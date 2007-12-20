@@ -19,13 +19,15 @@
  *	675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
+#include <stdio.h>
+#include <stdlib.h>
+#include "hotplug_util.h"
+#include "module_pci.h"
+#include "udev.h"
 
-#include "module_form.c"
-
-static char pci_string[256];
-
-static int hotplug_add(void)
+int pci_add(void)
 {
+	char pci_string[256];
 	char *class_env;
 	char *id_env;
 	char *subsys_env;
@@ -68,13 +70,6 @@ static int hotplug_add(void)
 	sprintf(pci_string + strlen(pci_string), "sc%02X", subclass);
 	sprintf(pci_string + strlen(pci_string), "i%02X", interface);
 
-	error = load_module(pci_string);
-	return error;
+	return modprobe(pci_string, true);
 }
 
-static inline int hotplug_remove(void)
-{
-	return 0;
-}
-
-main(pci);

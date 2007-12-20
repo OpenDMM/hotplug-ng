@@ -1,39 +1,41 @@
 /*
- * module_firmware.c
- *
- * Loads a firmware based on the firmware hotplug environment variables.
- *
- * Copyright (C) 2001,2005 Greg Kroah-Hartman <greg@kroah.com>
- * Copyright (C) 2007 Andreas Oberritter
- *
- *	This program is free software; you can redistribute it and/or modify it
- *	under the terms of the GNU General Public License as published by the
- *	Free Software Foundation version 2 of the License.
- *
- *	This program is distributed in the hope that it will be useful, but
- *	WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *	General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public License along
- *	with this program; if not, write to the Free Software Foundation, Inc.,
- *	675 Mass Ave, Cambridge, MA 02139, USA.
- *
- */
+    module_firmware.c
 
+    Loads a firmware based on the firmware hotplug environment variables.
+
+    Copyright (C) 2007 Andreas Oberritter
+    Copyright (C) 2001,2005 Greg Kroah-Hartman <greg@kroah.com>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License 2.0 as published by
+    the Free Software Foundation.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+#include <errno.h>
 #include <fcntl.h>
-#include <dirent.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include "module_form.c"
+#include "module_firmware.h"
+#include "udev.h"
 
 static int fw_open(const char *fmt, const char *str, int flags)
 {
-	char path[PATH_MAX];
+	char path[strlen(fmt) - strlen("%s") + strlen(str) + 1];
 	int fd;
 
-	snprintf(path, PATH_MAX, fmt, str);
-	path[PATH_MAX - 1] = '\0';
+	snprintf(path, sizeof(path), fmt, str);
+	path[sizeof(path) - 1] = '\0';
 
 	fd = open(path, flags);
 	if (fd == -1) {
@@ -60,7 +62,7 @@ static int fw_write(int fd, const char *buf, size_t count)
 	return count;
 }
 
-static int hotplug_add(void)
+int firmware_add(void)
 {
 	char *devpath_env;
 	char *firmware_env;
@@ -122,10 +124,4 @@ cleanup:
 	return ret;
 }
 
-static inline int hotplug_remove(void)
-{
-	return 0;
-}
-
-main(firmware);
 

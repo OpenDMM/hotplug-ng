@@ -19,12 +19,15 @@
  *	675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
-#include "module_form.c"
+#include <stdio.h>
+#include <stdlib.h>
+#include "hotplug_util.h"
+#include "module_usb.h"
+#include "udev.h"
 
-static char usb_string[256];
-
-static int hotplug_add(void)
+int usb_add(void)
 {
+	char usb_string[256];
 	char *product_env;
 	char *type_env;
 	char *interface_env;
@@ -80,14 +83,6 @@ static int hotplug_add(void)
 
 	}
 
-	error = load_module(usb_string);
-	return error;
+	return modprobe(usb_string, true);
 }
-
-static inline int hotplug_remove(void)
-{
-	return 0;
-}
-
-main(usb);
 

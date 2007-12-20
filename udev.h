@@ -26,7 +26,7 @@
 #include "list.h"
 #include "logging.h"
 #include "udev_sysdeps.h"
-//#include "udev_version.h"
+#include "udev_version.h"
 
 #define COMMENT_CHARACTER			'#'
 #define LINE_SIZE				512
@@ -49,6 +49,7 @@
 
 #define DB_DIR					".udev/db"
 #define DB_NAME_INDEX_DIR			".udev/names"
+#define RULES_DYN_DIR				".udev/rules.d"
 
 struct udev_rules;
 
@@ -68,6 +69,7 @@ struct udevice {
 	struct sysfs_device dev_local;
 	struct sysfs_device *dev_parent;	/* current parent device used for matching */
 	char action[NAME_SIZE];
+	char *devpath_old;
 
 	/* node */
 	char name[PATH_SIZE];
@@ -130,6 +132,7 @@ extern int udev_node_remove(struct udevice *udev);
 /* udev_db.c */
 extern int udev_db_add_device(struct udevice *dev);
 extern int udev_db_delete_device(struct udevice *dev);
+extern int udev_db_rename(const char *devpath_old, const char *devpath);
 extern int udev_db_get_device(struct udevice *udev, const char *devpath);
 extern int udev_db_get_devices_by_name(const char *name, struct list_head *name_list);
 extern int udev_db_get_all_entries(struct list_head *name_list);
@@ -138,10 +141,12 @@ extern int udev_db_get_all_entries(struct list_head *name_list);
 struct name_entry {
 	struct list_head node;
 	char name[PATH_SIZE];
+	unsigned int ignore_error:1;
 };
+
 extern int log_priority(const char *priority);
-extern char *name_list_add(struct list_head *name_list, const char *name, int sort);
-extern char *name_list_key_add(struct list_head *name_list, const char *key, const char *value);
+extern struct name_entry *name_list_add(struct list_head *name_list, const char *name, int sort);
+extern struct name_entry *name_list_key_add(struct list_head *name_list, const char *key, const char *value);
 extern int name_list_key_remove(struct list_head *name_list, const char *key);
 extern void name_list_cleanup(struct list_head *name_list);
 extern int add_matching_files(struct list_head *name_list, const char *dirname, const char *suffix);
@@ -164,9 +169,12 @@ extern void file_unmap(void *buf, size_t bufsize);
 extern int unlink_secure(const char *filename);
 extern size_t buf_get_line(const char *buf, size_t buflen, size_t cur);
 
-/* udev_utils_run.c */
-extern int pass_env_to_socket(const char *name, const char *devpath, const char *action);
-extern int run_program(const char *command, const char *subsystem,
-		       char *result, size_t ressize, size_t *reslen, int log);
+/* udev commands */
+extern int udevmonitor(int argc, char *argv[], char *envp[]);
+extern int udevinfo(int argc, char *argv[], char *envp[]);
+extern int udevcontrol(int argc, char *argv[], char *envp[]);
+extern int udevtrigger(int argc, char *argv[], char *envp[]);
+extern int udevsettle(int argc, char *argv[], char *envp[]);
+extern int udevtest(int argc, char *argv[], char *envp[]);
 
 #endif

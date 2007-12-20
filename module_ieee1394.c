@@ -19,12 +19,15 @@
  *	675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
-#include "module_form.c"
+#include <stdio.h>
+#include <stdlib.h>
+#include "hotplug_util.h"
+#include "module_ieee1394.h"
+#include "udev.h"
 
-static char ieee1394_string[256];
-
-static int hotplug_add(void)
+int ieee1394_add(void)
 {
+	char ieee1394_string[256];
 	char *vendor_env;
 	char *model_env;
 	char *specifier_env;
@@ -59,13 +62,6 @@ static int hotplug_add(void)
 	sprintf(ieee1394_string + strlen(ieee1394_string), "sp%08lX", specifier);
 	sprintf(ieee1394_string + strlen(ieee1394_string), "ver%08lX", version);
 
-	error = load_module(ieee1394_string);
-	return error;
+	return modprobe(ieee1394_string, true);
 }
 
-static inline int hotplug_remove(void)
-{
-	return 0;
-}
-
-main(ieee1394);
