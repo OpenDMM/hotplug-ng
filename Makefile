@@ -26,16 +26,16 @@ CFLAGS ?= -pipe -Wall -Wextra -Wno-unused -Os -fomit-frame-pointer
 LDFLAGS ?= -Wl,-warn-common -s
 INSTALL ?= /usr/bin/install
 
-CPPFLAGS += -DUDEVMONITOR
-CPPFLAGS += -DUDEVTRIGGER
+#CPPFLAGS += -DUDEVMONITOR
+#CPPFLAGS += -DUDEVTRIGGER
 
 # Set the following to control the use of syslog
 # Unset it to remove all logging
-CPPFLAGS += -DUSE_LOG
+#CPPFLAGS += -DUSE_LOG
 
 # Set the following to log the debug.
 # Leave this unset for production use.
-CPPFLAGS += -DDEBUG
+#CPPFLAGS += -DDEBUG
 
 ###############################################################################
 
