@@ -44,8 +44,11 @@ void hotplug_socket_send_env(const char *vars[])
 	}
 
 	while (*vars != NULL) {
-		if ((var = getenv(*vars)))
+		if ((var = getenv(*vars))) {
+			write(s, *vars, strlen(*vars));
+			write(s, "=", 1);
 			write(s, var, strlen(var) + 1);
+		}
 		vars++;
 	}
 exit:
