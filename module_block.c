@@ -175,6 +175,9 @@ static bool dev_is_cdrom(const char *devpath)
 
 	str = hotplug_basename(devpath);
 
+	if (!strncmp(str, "sr", 2))
+		return 1;
+
 	if ((strlen(str) > 2) &&
 	    (str[0] == 'h') &&
 	    (str[1] == 'd')) {
