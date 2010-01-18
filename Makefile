@@ -24,7 +24,7 @@
 CC = $(CROSS_COMPILE)gcc
 CFLAGS ?= -pipe -Wall -Wextra -Wno-unused -Os -fomit-frame-pointer
 LDFLAGS ?= -Wl,-warn-common -s
-INSTALL ?= /usr/bin/install
+INSTALL ?= install
 
 #CPPFLAGS += -DUDEVMONITOR
 #CPPFLAGS += -DUDEVTRIGGER
